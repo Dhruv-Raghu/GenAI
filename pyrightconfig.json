@@ -1,0 +1,9 @@
+{
+  "venvPath": "/usr/local/Caskroom/miniconda/base/envs",
+  "venv": "/usr/local/Caskroom/miniconda/base/envs/aws",
+  "executionEnvironments": [
+    {
+      "python": "/usr/local/Caskroom/miniconda/base/envs/aws/bin/python3"
+    }
+  ]
+}
