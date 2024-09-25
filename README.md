@@ -10,11 +10,11 @@ Series of projects to get myself familiar with Amazon Bedrock and AWS.
 ## 1. Text Generation
 Learn how to use Amazon Bedrock to generate responses to basic prompts.
 ### Learning Objectives
-[ ] Use boto3 to create the bedrock client.
-[ ] Configure the model and its paramters.
-[ ] Use langchain_aws to invoke responses.
-[ ] Create a bot that can translate user text from english to French, Spanish or Italian.
-[ ] Create a working GUI for the translator using Streamlit.
+- [ ] Use boto3 to create the bedrock client.
+- [ ] Configure the model and its paramters.
+- [ ] Use langchain_aws to invoke responses.
+- [ ] Create a bot that can translate user text from english to French, Spanish or Italian.
+- [ ] Create a working GUI for the translator using Streamlit.
 
 ## 2. Knowledge Bases and RAG
 Work in progress..
