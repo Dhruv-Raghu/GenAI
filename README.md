@@ -1,8 +1,8 @@
 # GenAI: Documenting my journey learning Generative AI concepts
-## Motivation
 As a fresh graduate with an interest in ML and AI concepts, the new wave of Generative AI and LLMs peaked my interest. With a strong base in the fundamentals of ML, Neural Networks and some basic AI concepts, I have decided to explore the world of Generative AI through real world projects and document my learning journey.
-PS: I am not a professional so take everything with a grain of salt.
 I will be using AWS, more specifically Amazon Bedrock since I was lucky enough to get access to some AWS credits through a hackathon.
+
+PS: I am not a professional so take everything with a grain of salt.
 
 ## Prerequisites
 - [x] Install and configure the AWS CLI (https://tinyurl.com/2b63f584)
@@ -13,14 +13,14 @@ I will be using AWS, more specifically Amazon Bedrock since I was lucky enough t
 
 ## 1. Text Generation
 This is where I start my journey with Generative AI. The main aim behind this chapter is to get my feet wet with the basics of generative AI.
-### 1.1. translate.py
+### 1.1. translate.py(1_Text_Generation/translate.py)
 My very first generative AI project. The aim is to create a simple script that takes an english phrase and uses an LLM to translate it to another language.
 #### Learning Outcomes
 - Understanding boto3
 - Configure the model and its paramters.
 - Use langchain_aws to invoke responses.
 - Zero-shot prompting
-### 1.2. translate_app.py
+### 1.2. translate_app.py(1_Text_Generation/translate_app.py)
 Create a chat app using Streamlit (my first time using streamlit) that allows the user to select a language and input a phrase to be translated.
 #### Learning Outcomes
 - Create a simple web app for the translator using Streamlit.
