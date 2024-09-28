@@ -13,7 +13,7 @@ PS: I am not a professional so take everything with a grain of salt.
 
 ## 1. Text Generation
 This is where I start my journey with Generative AI. The main aim behind this chapter is to get my feet wet with the basics of generative AI.
-### 1.1. [translate.py](1_Text_Generation/translate.py)
+### [1.1. translate.py](1_Text_Generation/translate.py)
 My very first generative AI project. The aim is to create a simple script that takes an english phrase and uses an LLM to translate it to another language.
 #### Learning Outcomes
 - Understanding boto3
