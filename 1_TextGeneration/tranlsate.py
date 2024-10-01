@@ -28,8 +28,8 @@ text = "'{input_text}'".format(input_text = input_text)
 prompt = """User: Translate {text} to {language}
 Translation: """.format(text=text, language=language)
 
-# response = chat.invoke(prompt)
-response = chat.stream(prompt)
-# print(response.content)
-for x in response:
-    print(x, end="", flush=True)
+response = chat.invoke(prompt)
+# response = chat.stream(prompt)
+print(response.content)
+# for x in response:
+#     print(x, end="", flush=True)
