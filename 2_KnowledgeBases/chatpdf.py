@@ -23,29 +23,26 @@ class App():
             with st.chat_message(x['role']):
                 st.write(x['content'])
 
+        #  read user input
         if input_text := st.chat_input("Ask something here"):
+            # print the user prompt
             with st.chat_message("user"):
                 st.write(input_text)
-
+            # add user prompt to chat history
             st.session_state.messages.append({'role':'user', 'content':input_text})
 
+            # update the model parameters from the toggles in the sidebar
             self.llm.model_params = st.session_state.model_params
+            # generate a response
+            output, input_tokens, output_tokens = self.llm.generate_response(input_text)
 
-            response = self.llm.generate_response(input_text)
-            input_tokens = response['inputTextTokenCount']
-
-            output_tokens = 0
-            output = ""
-            for x in response['results']:
-                output_tokens += x['tokenCount']
-                output = x['outputText']
-
+            # print the llm output
             with st.chat_message("ai"):
                 st.write(output)
+            # add the input and ouput tokens in a dialogue box
+            st.info(f"Input Tokens: {input_tokens} | Output Tokens: {output_tokens}")
 
-            st.info(f"Input Tokens: {input_tokens}")
-            st.info(f"Output Tokens: {output_tokens}")
-
+            # add the llm output to chat history
             st.session_state.messages.append({'role':'ai', 'content':output})
 
     def sidebar(self):
@@ -99,23 +96,54 @@ class TitanText():
         if finish_reason is not None:
             raise ResponseError(f"Text generation error. Error is {finish_reason}")
 
-        return response_body
+        input_tokens = response_body['inputTextTokenCount']
+        # collect the output tokens and the output
+        output_tokens = 0   # initialize
+        output = ""
+        for x in response_body['results']:
+            output_tokens += x['tokenCount']
+            output = x['outputText']
+
+        return output, input_tokens, output_tokens
 
 class TitanEmbeddings():
-    def __init__(self, bedrock_client, ):
-        bedrock = bedrock_client
-        model_id = "amazon.titan-embed-text-v2:0"
+    def __init__(self, bedrock_client, dimensions=1024, normalize=True, embeddingTypes=['float']):
+        self.bedrock = bedrock_client
+        self.model_id = "amazon.titan-embed-text-v2:0"
+        self.model_params = {
+            "dimensions":dimensions,
+            "normalize":normalize,
+            "embeddingTypes":embeddingTypes
+        }
+
+    def generate_embeddings(self, text):
+        body =  {
+            "inputText":text,
+            "dimensions": self.model_params["dimensions"],
+            "normalize": self.model_params["normalize"],
+            "embeddingTypes": self.model_params["embeddingTypes"]
+        }
+        body = json.dumps(body)
+        response = self.bedrock.invoke_model(body=body, modelId=self.model_id)
+        response_body = json.loads(response.get('body').read())
+
+        return response_body['embedding'], response_body['inputTextTokenCount']
 
 
-class DocumentLoader():
-    # TODO
-    def __init__(self):
-        pass
-        pass
+# class DocumentLoader():
+#     # TODO
+#     def __init__(self):
+#         pass
+#         pass
 
 def main():
     bedrock_client=boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
-    streamlit_app = App()
+    # streamlit_app = App()
+    embedding = TitanEmbeddings(bedrock_client)
+    inputString = "hello this is cool"
+    response, inputTokens = embedding.generate_embeddings(inputString)
+    print(response)
+    print(inputTokens)
 
 if __name__ == "__main__":
     # TODO
