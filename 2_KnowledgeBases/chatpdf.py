@@ -5,6 +5,8 @@ import boto3
 # from langchain_community.document_loaders import UnstructuredMarkdownLoader
 # from langchain_core import messages
 import streamlit as st
+import pymupdf
+from chunker import SemanticChunker
 
 class App():
     # TODO
@@ -12,8 +14,9 @@ class App():
         st.title("Chat with document RAG")
         self.bedrock_client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
         self.llm = Claude3_Haiku(self.bedrock_client)
-        self.chat()
+        # st.session_state.file = None
         self.sidebar()
+        self.chat()
 
     def chat(self):
         # chat history
@@ -22,6 +25,9 @@ class App():
         for x in st.session_state.messages:
             with st.chat_message(x['role']):
                 st.write(x['content'][0]['text'])
+
+        if st.session_state.file is not None:
+            doc = pymupdf.open(stream=st.session_state.file.read(), filetype='pdf')
 
         #  read user input
         if input_text := st.chat_input("Ask something here"):
@@ -44,17 +50,17 @@ class App():
             with st.chat_message("assistant"):
                 st.write(output['content'][0]['text'])
             st.info(f"Input Tokens: {input_tokens} | Output Tokens: {output_tokens}")
-            
+
             # before using bedrock_client.converse()
             # output, input_tokens, output_tokens = self.llm.generate_response(input_text)
             # # print the llm output
             # with st.chat_message("ai"):
             #     st.write(output)
-            
+
     def sidebar(self):
         with st.sidebar:
             # upload file
-            uploaded_file = st.file_uploader("Select file to chat with:")
+            uploaded_file = st.file_uploader("Select file to chat with:", type='pdf', key='file') #noqa
 
             # model parameters
             st.subheader("Model Parameteres")
@@ -222,7 +228,7 @@ class TitanEmbeddings():
 #         pass
 
 def main():
-    bedrock_client=boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
+    # bedrock_client=boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
     streamlit_app = App()
     # embedding = TitanEmbeddings(bedrock_client)
     # inputString = "hello this is cool"

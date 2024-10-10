@@ -59,7 +59,7 @@ class SemanticChunker():
 
     def chunk(self, doc):
         sentences = []
-        print("\nSplitting Sentences")
+        print("\nSplitting Sentences...")
         for page in doc:
             # print(page)
             text = page.get_textpage().extractTEXT()
@@ -72,18 +72,18 @@ class SemanticChunker():
                 }
                 sentences.append(sentence_data)
 
-        print("\nAdding Buffer")
+        print("\nAdding Buffer...")
         # add n sentences (based on buffer size) before and after each sentence as context
         # added to a new key 'sentence_with_context'
         self.combine_sentences(sentences=sentences)
 
-        print("\nGenerating Embeddings")
+        print("\nGenerating Embeddings...")
         # generate embeddings for each sentence
         self.generateEmbeddings(sentences)
         # calculate cosine distances between embeddings
         distances, sentences = self.calculate_distances(sentences)
 
-        print("\nChunking")
+        print("\nChunking...")
         # chunk based on calculated breakpoints
         breakpoint_distance = np.percentile(distances, self.breakpointPercentile)
         breakpoint_indices = []
@@ -111,24 +111,30 @@ class SemanticChunker():
             })
             start_index = index+1
 
+        index = 0
         if start_index < len(sentences):
             group = sentences[start_index:]
             chunk_text=''
             chunk_page=0
+            chunk_page = group[0]['page']
+
             for sentence in group:
                 chunk_text += (' ' + sentence['text'])
-                chunk_page = sentence['page']
+
             chunks.append({
+                "index": index,
                 "text": chunk_text,
                 "page": chunk_page+1
             })
 
+            index += 1
+
         print("\nNumber of chunks: " + str(len(chunks)))
         # print(chunks[0])
 
-        for chunk in chunks:
-            print('\n\n')
-            print(chunk)
+        # for chunk in chunks:
+        #     print('\n\n')
+        #     print(chunk)
 
         # print(sentences[1])
         # print(distances[:3])
@@ -137,12 +143,14 @@ class SemanticChunker():
         # for sentence in sentences:
         #     print(sentence)
         #     print("\n\n")
+        return chunks
 
 
 def main():
     chunker = SemanticChunker(bufferSize=1, breakpointPercentile=70)
+    print('Opening Doc...')
     doc = pymupdf.open('/Users/dhruv/Documents/GenAI/2_KnowledgeBases/data/neural_vision.pdf')
-    doc = pymupdf.open('/Users/dhruv/Documents/Y4S2/FYP_Sem1/Wachaja2015 - Navigating Blind People with a Smart Walker.pdf')
+    # doc = pymupdf.open('/Users/dhruv/Documents/Y4S2/FYP_Sem1/Wachaja2015 - Navigating Blind People with a Smart Walker.pdf')
     chunker.chunk(doc)
 
     # sem_chunker = SemanticChunker()
