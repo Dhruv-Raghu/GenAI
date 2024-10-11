@@ -40,7 +40,7 @@ class SemanticChunker():
             sentences[i]['sentence_with_context'] = sentence_with_context
 
     def generateEmbeddings(self, sentences):
-        model = SentenceTransformer("all-mpnet-base-v2")
+        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         for i in range(len(sentences)):
             sentences[i]['embedding'] = model.encode(sentences[i]['sentence_with_context'])
 
@@ -68,7 +68,8 @@ class SemanticChunker():
             for sentence in sentence_list:
                 sentence_data = {
                     'text':sentence,
-                    'page':page.number
+                    'page':page.number,
+                    'file':doc.name
                 }
                 sentences.append(sentence_data)
 
@@ -87,7 +88,7 @@ class SemanticChunker():
         # chunk based on calculated breakpoints
         breakpoint_distance = np.percentile(distances, self.breakpointPercentile)
         breakpoint_indices = []
-
+        # create a list of indices where the distance is greater than the threshold
         for i in range(len(distances)):
             if distances[i] > breakpoint_distance:
                 breakpoint_indices.append(i)
@@ -95,63 +96,65 @@ class SemanticChunker():
         print("\nBreakpoint Indices: ")
         print(breakpoint_indices)
 
+        # Start chunking based on breakpoint indices
         start_index = 0
+        chunk_index = 0
         chunks = []
         for index in breakpoint_indices:
             end_index = index
+            # group the sentences that will form a chunk
             group = sentences[start_index:end_index+1]
             chunk_text = ''
-            chunk_page = 0
+            chunk_page = group[0]['page']
+            chunk_id = f"{group[0]['file']}:{chunk_index}:{chunk_page}"
+            # add each sentence in the group to a string
             for sentence in group:
                 chunk_text += (' ' + sentence['text'])
-                chunk_page = sentence['page']
+            # create a chunk and it to the list of chunks in json format
             chunks.append({
+                "_id" : chunk_id,
                 "text": chunk_text,
-                "page": chunk_page+1
+                "metadata":{
+                    "page": chunk_page+1,
+                    "file": group[0]['file']
+                }
             })
             start_index = index+1
-
-        index = 0
+            chunk_index += 1
+        # any remaining sentences after the last breakpoint index will form the final group
         if start_index < len(sentences):
             group = sentences[start_index:]
             chunk_text=''
-            chunk_page=0
             chunk_page = group[0]['page']
-
+            chunk_id = f"{group[0]['file']}:{chunk_index}:{chunk_page}"
             for sentence in group:
                 chunk_text += (' ' + sentence['text'])
 
             chunks.append({
-                "index": index,
+                "_id" : chunk_id,
                 "text": chunk_text,
-                "page": chunk_page+1
+                "metadata":{
+                    "page": chunk_page+1,
+                    "file": group[0]['file']
+                }
             })
 
-            index += 1
-
         print("\nNumber of chunks: " + str(len(chunks)))
-        # print(chunks[0])
 
-        # for chunk in chunks:
-        #     print('\n\n')
-        #     print(chunk)
-
-        # print(sentences[1])
-        # print(distances[:3])
-        # print(breakpoint_distance)
-        # # pretty print sentences
-        # for sentence in sentences:
-        #     print(sentence)
-        #     print("\n\n")
         return chunks
 
 
 def main():
     chunker = SemanticChunker(bufferSize=1, breakpointPercentile=70)
     print('Opening Doc...')
-    doc = pymupdf.open('/Users/dhruv/Documents/GenAI/2_KnowledgeBases/data/neural_vision.pdf')
+    doc = pymupdf.open('data/neural_vision.pdf')
     # doc = pymupdf.open('/Users/dhruv/Documents/Y4S2/FYP_Sem1/Wachaja2015 - Navigating Blind People with a Smart Walker.pdf')
-    chunker.chunk(doc)
+    chunks = chunker.chunk(doc)
+
+    for chunk in chunks:
+        print('\n\n')
+        print(chunk)
+
 
     # sem_chunker = SemanticChunker()
     # sem_chunker.chunk(pdfData=data)
