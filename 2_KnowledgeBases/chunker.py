@@ -2,10 +2,17 @@
 import re
 # Sentence Transformers for quick embedding model
 from sentence_transformers import SentenceTransformer
+from fmodels import TitanEmbeddings
+import boto3
+import os
 # similarity to comapare embeddings
 from sentence_transformers.util import cos_sim
 import numpy as np
 import pymupdf
+
+from transformers import AutoModel
+from transformers import AutoTokenizer
+import requests
 
 class SemanticChunker():
     def __init__(self, bufferSize=1, breakpointPercentile=95) -> None:
@@ -44,6 +51,13 @@ class SemanticChunker():
         for i in range(len(sentences)):
             sentences[i]['embedding'] = model.encode(sentences[i]['sentence_with_context'])
 
+
+    def generateEmbeddingsTitan(self, sentences):
+        bedrock_client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
+        model = TitanEmbeddings(bedrock_client=bedrock_client)
+        for i in range(len(sentences)):
+            sentences[i]['embedding'] = model.generate_embeddings(sentences[i]['sentence_with_context'])[0]
+
     def calculate_distances(self, sentences):
         distances=[]
         for i in range(len(sentences)-1):
@@ -57,7 +71,10 @@ class SemanticChunker():
             sentences[i]['distance_to_next'] = distance
         return distances, sentences
 
-    def chunk(self, doc):
+    def chunk(self, doc, file_name=None):
+        if file_name is None:
+            file_name='unnamed'
+
         sentences = []
         print("\nSplitting Sentences...")
         for page in doc:
@@ -69,9 +86,10 @@ class SemanticChunker():
                 sentence_data = {
                     'text':sentence,
                     'page':page.number,
-                    'file':doc.name
+                    'file':file_name
                 }
                 sentences.append(sentence_data)
+            # print(sentences[0]['file'])
 
         print("\nAdding Buffer...")
         # add n sentences (based on buffer size) before and after each sentence as context
@@ -80,7 +98,7 @@ class SemanticChunker():
 
         print("\nGenerating Embeddings...")
         # generate embeddings for each sentence
-        self.generateEmbeddings(sentences)
+        self.generateEmbeddingsTitan(sentences)
         # calculate cosine distances between embeddings
         distances, sentences = self.calculate_distances(sentences)
 
@@ -106,7 +124,7 @@ class SemanticChunker():
             group = sentences[start_index:end_index+1]
             chunk_text = ''
             chunk_page = group[0]['page']
-            chunk_id = f"{group[0]['file']}:{chunk_index}:{chunk_page}"
+            chunk_id = f"{file_name[0:-4]}:{chunk_index}:{chunk_page}"
             # add each sentence in the group to a string
             for sentence in group:
                 chunk_text += (' ' + sentence['text'])
@@ -126,7 +144,7 @@ class SemanticChunker():
             group = sentences[start_index:]
             chunk_text=''
             chunk_page = group[0]['page']
-            chunk_id = f"{group[0]['file']}:{chunk_index}:{chunk_page}"
+            chunk_id = f"{file_name[:-4]}:{chunk_index}:{chunk_page}"
             for sentence in group:
                 chunk_text += (' ' + sentence['text'])
 
@@ -141,24 +159,121 @@ class SemanticChunker():
 
         print("\nNumber of chunks: " + str(len(chunks)))
 
+        for chunk in chunks:
+            print('\n\n')
+            print(chunk)
+
         return chunks
 
+class LateChunker():
+    def __init__(self):
+        # load model and tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v2-base-en', trust_remote_code=True)
+        self.model = AutoModel.from_pretrained('jinaai/jina-embeddings-v2-base-en', trust_remote_code=True)
 
-def main():
-    chunker = SemanticChunker(bufferSize=1, breakpointPercentile=70)
-    print('Opening Doc...')
-    doc = pymupdf.open('data/neural_vision.pdf')
-    # doc = pymupdf.open('/Users/dhruv/Documents/Y4S2/FYP_Sem1/Wachaja2015 - Navigating Blind People with a Smart Walker.pdf')
-    chunks = chunker.chunk(doc)
+    def jina_segmenter(self, text):
+        # call the jina segmenter api
+        url = 'https://segment.jina.ai/'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer jina_a32bba3cefd34f858546c220b9ae477630ChwEd0nh1qRou-RPauzneNWPgM'
+        }
+        data = {
+            "content": text,
+            "return_tokens": True,
+            "return_chunks": True,
+            "max_chunk_length": 1000
+        }
+        response_data = requests.post(url, headers=headers, json=data).json()
+        chunks = response_data.get('chunks', [])
+        chunk_positions = [(start, end) for start, end in response_data.get('chunk_positions', [])]
+        # print(chunk_positions)
 
-    for chunk in chunks:
-        print('\n\n')
-        print(chunk)
+        # Unfortunately, chunk positions are based on character count rather than token count. We need the chunk positions with respect to tokens
+        # Hence the following code:
+        # tokenize the text
+        inputs = self.tokenizer(text, return_tensors='pt', return_offsets_mapping=True)
+        # return the start and end character indices for each token
+        token_offsets = inputs['offset_mapping'][0].tolist()  # (start, end) positions for each token
+        # the first and last items in the token offsets are (0,0) so we remove them
+        token_offsets.pop(len(token_offsets)-1)
+        token_offsets.pop(0)
+        print(inputs)
 
+        # create a list to store every token index where a chunk ends
+        chunk_end_index = []
+        # for each chunk get the start and end character indices
+        for (chunk_start, chunk_end) in chunk_positions:
+            # iterate through all the start and end character indices of the tokens
+            for i, (start, end) in enumerate(token_offsets):
+                # if it is the last token in the token list, add it to the list
+                if i == len(token_offsets)-1:
+                    chunk_end_index.append(i)
+                # if the chunk end character position is lesser than the current token end position:
+                elif chunk_end <= end:
+                    # add the current token as the end of a chunk
+                    chunk_end_index.append(i)
+                    break   # break to move onto the next chunk end character position
 
-    # sem_chunker = SemanticChunker()
-    # sem_chunker.chunk(pdfData=data)
+        # now, populate the span annotations with the span of each chunk in terms of tokens
+        span_annotations = []
+        start = 0
+        for index in chunk_end_index:
+            span_annotations.append((start, index))
+            start = index+1
+        print(span_annotations)
 
+        return chunks, span_annotations
 
-if __name__ == '__main__':
-    main()
+    def late_chunking(self, model_output, span_annotations, max_length=None):
+        # this function is adapted and repurposed from the jina ai late chunking repo: https://github.com/jina-ai/late-chunking
+        token_embeddings = model_output[0]
+        outputs=[]
+
+        for embeddings, annotations in zip(token_embeddings, span_annotations):
+            # remove annotations that go beyond the max length of the model
+            if max_length is not None:
+                annotations = [
+                    (start, min(end, max_length - 1))
+                    for (start, end) in annotations
+                    if start < (max_length - 1)
+                ]
+
+            # mean pooling of chunk embeddings
+            pooled_embeddings = [
+                embeddings[start:end].sum(dim=0) / (end - start)
+                for start, end in annotations
+                if (end - start) >= 1
+            ]
+
+            # convert from tensor to python array
+            pooled_embeddings = [
+                embedding.detach().cpu().numpy() for embedding in pooled_embeddings
+            ]
+            outputs.append(pooled_embeddings)
+
+        return outputs
+
+    def get_chunk_embeddings(self, doc):
+        print('extract text from pdf')
+        text = ''
+        for page in doc:
+            text += page.get_textpage().extractTEXT()
+        # remove unnecesary line breaks to clean up the text and chunk it better
+        text = text.replace(' \n ', '')
+        pattern = r"(?<![.!?])\n"
+        text = re.sub(pattern, "", text)
+
+        # chunk the text and return the start and end indices of the tokens of each chunk
+        print('jina segmenter')
+        chunks, span_annotations = self.jina_segmenter(text=text)
+
+        # call the tokenizer on the input text and chunk token embeddings together based on the indices in the previous step
+        print('late chunking')
+        token_inputs = self.tokenizer(text, return_tensors='pt')
+        model_output = self.model(**token_inputs)
+        chunk_embeddings = self.late_chunking(model_output, [span_annotations], 8000)[0]
+
+        # return the chunks and the chunk embeddings
+        print('done hehe')
+        return chunks, chunk_embeddings
