@@ -8,7 +8,6 @@ import os
 # similarity to comapare embeddings
 from sentence_transformers.util import cos_sim
 import numpy as np
-import pymupdf
 
 from transformers import AutoModel
 from transformers import AutoTokenizer

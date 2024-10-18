@@ -2,11 +2,9 @@ import os
 
 import boto3
 import pymupdf
-from document_loaders import PdfLoader
 import streamlit as st
-from chunker import SemanticChunker, LateChunker
-from fmodels import Claude3_Haiku, TitanEmbeddings
-from pymongo.cursor import OperationFailure
+from chunker import LateChunker
+from fmodels import Claude3_Haiku
 from vectordb import MongoDB
 
 from transformers import AutoModel
