@@ -175,7 +175,7 @@ class LateChunker():
         url = 'https://segment.jina.ai/'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer jina_a32bba3cefd34f858546c220b9ae477630ChwEd0nh1qRou-RPauzneNWPgM'
+            'Authorization': f'Bearer {os.environ.get('JINA', None)}'
         }
         data = {
             "content": text,

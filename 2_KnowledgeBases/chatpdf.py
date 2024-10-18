@@ -13,7 +13,7 @@ from transformers import AutoModel
 class App():
     # TODO
     def __init__(self):
-        st.title("Chat with document RAG")
+        st.title("Chat with PDF")
         self.bedrock_client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", None))
         self.llm = Claude3_Haiku(self.bedrock_client)
         self.mongodb = MongoDB(database_name="chatwpdf", collection_name="uploaded_docs")
