@@ -1,4 +1,4 @@
-# GenAI: Documenting my journey learning Generative AI concepts
+# GenAI: Documenting my Generative AI journey
 As a fresh graduate with an interest in ML and AI concepts, the new wave of Generative AI and LLMs peaked my interest. With a strong base in the fundamentals of ML, Neural Networks and some basic AI concepts, I have decided to explore the world of Generative AI through real world projects and document my learning journey.
 I will be using AWS, more specifically Amazon Bedrock since I was lucky enough to get access to some AWS credits through a hackathon.
 
